@@ -4,8 +4,6 @@
 
 A [TensorForce](https://github.com/reinforceio/tensorforce)-based Bitcoin trading bot (algo-trader). Uses deep reinforcement learning to automatically buy/sell/hold BTC based on price history.
 
-Chat on [Gittr](https://gitter.im/lefnire/tforce_btc_trader)!
-
 ### 1. Setup
 - Python 3.6+ (I use template strings a lot)
 - Install & setup Postgres
