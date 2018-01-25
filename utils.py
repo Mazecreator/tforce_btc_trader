@@ -52,7 +52,7 @@ guess_overrides = [
         {'net.stride': 2},
     ],
     [
-        {'unimodal': True},
+        {'single_action': True},
         {'scale': False},
         {'step_window': 400},
     ],
@@ -95,7 +95,7 @@ guess_overrides = [
          'step_optimizer.learning_rate': 7.918741845681779,
          'step_optimizer.type': 'adam',
          'step_window': 229,
-         'unimodal': True},
+         'single_action': True},
 
         {'batch_size': 5},
         {'batch_size': 10},
@@ -129,6 +129,6 @@ guess_overrides = [
          'step_optimizer.learning_rate': 6.5,
          'step_optimizer.type': 'adam',
          'step_window': 250,
-         'unimodal': False},
+         'single_action': False},
     ]
 ]
