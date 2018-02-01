@@ -65,6 +65,7 @@ class Scaler(object):
     def transform_state(self, state):
         self.i += 1
         if self._should_skip():
+            #print("transform_state",state)
             return self.state_scaler.transform([state])[-1]
         # Fit, transform, return
         self.states.append(state)
@@ -126,7 +127,7 @@ class BitcoinEnv(Environment):
         # gdax min order size = .01btc; krakken = .002btc
         self.min_trade = {Exchange.GDAX: .01, Exchange.KRAKEN: .002}[EXCHANGE]
         try:
-            self.btc_price = int(requests.get(f"https://api.cryptowat.ch/markets/{EXCHANGE.value}/btcusd/price").json()['result']['price'])
+            self.btc_price = int(requests.get("https://api.cryptowat.ch/markets/{EXCHANGE.value}/btcusd/price").json()['result']['price'])
         except:
             self.btc_price = 12000
 
@@ -154,7 +155,7 @@ class BitcoinEnv(Environment):
             # channels = features/inputs (price actions, OHCLV, etc).
             self.states_['series']['shape'] = (self.hypers.step_window, 1, self.cols_)
 
-        scaler_k = f'ind={self.hypers.indicators}arb={self.hypers.arbitrage}'
+        scaler_k = 'ind={self.hypers.indicators}arb={self.hypers.arbitrage}'
         if scaler_k not in scalers:
             scalers[scaler_k] = Scaler()
         self.scaler = scalers[scaler_k]
@@ -195,14 +196,14 @@ class BitcoinEnv(Environment):
         percent = self.hypers.pct_change
         for table in tables_:
             name, cols, ohlcv = table['name'], table['cols'], table.get('ohlcv', {})
-            columns += [self._diff(df[f'{name}_{k}'], percent) for k in cols]
+            columns += [self._diff(df[name+"_"+k], percent) for k in cols]
 
             # Add extra indicator columns
             if ohlcv and self.hypers.indicators:
                 ind = pd.DataFrame()
                 # TA-Lib requires specifically-named columns (OHLCV)
                 for k, v in ohlcv.items():
-                    ind[k] = df[f"{name}_{v}"]
+                    ind[k] = df[name+"_"+v]
                 columns += [
                     ## Original indicators from some boilerplate repo I started with
                     self._diff(SMA(ind, timeperiod=15), percent),
@@ -364,14 +365,14 @@ class BitcoinEnv(Environment):
                         # price=str(abs_sig),  # USD
                         size=float(abs_sig),  # BTC
                         product_id='BTC-USD')
-                print(f"Sold {signal}!")
+                print("Sold {signal}!")
             elif signal > 0:
                 if live:
                     self.gdax_client.buy(
                         # price=str(abs_sig),  # USD
                         size=float(abs_sig),  # BTC
                         product_id='BTC-USD')
-                print(f"Bought {signal}!")
+                print("Bought {signal}!")
             elif step_acc.i % 10 == 0:
                 print(".")
 
@@ -391,7 +392,7 @@ class BitcoinEnv(Environment):
                 step_acc.cash = float([a for a in accounts if a['currency'] == 'USD'][0]['balance']) / self.btc_price
                 step_acc.value = float([a for a in accounts if a['currency'] == 'BTC'][0]['balance'])
             if signal != 0:
-                print(f"New Total: {step_acc.cash + step_acc.value}")
+                print("New Total: {step_acc.cash + step_acc.value}")
                 self.episode_finished(None)  # Fixme refactor, awkward function to call here
             next_state['stationary'] = [
                 step_acc.cash / self.start_cash,
@@ -416,8 +417,8 @@ class BitcoinEnv(Environment):
 
         # Print (limit to note-worthy)
         common = dict((round(k,2), v) for k, v in Counter(signals).most_common(5))
-        completion = f"|{int(ep_acc.total_steps / TIMESTEPS * 100)}%"
-        print(f"{ep_acc.i}|⌛:{step_acc.i}{completion}\tA:{'%.3f'%advantage}\t{common}({n_uniques}uniq)")
+        completion = "|"+str(int(ep_acc.total_steps / TIMESTEPS * 100))+"%"
+        print(str(ep_acc.i)+"|⌛:"+str(step_acc.i)+str(completion)+"\tA:"+str(advantage)+"\t"+str(common)+" "+str(n_uniques))
         return True
 
     def run_deterministic(self, runner, print_results=True):
@@ -455,7 +456,7 @@ class BitcoinEnv(Environment):
         accounts = self.gdax_client.get_accounts()
         self.start_cash = float([a for a in accounts if a['currency'] == 'USD'][0]['balance']) / self.btc_price
         self.start_value = float([a for a in accounts if a['currency'] == 'BTC'][0]['balance'])
-        print(f'Starting total: {self.start_cash + self.start_value}')
+        print('Starting total: {self.start_cash + self.start_value}')
 
         runner = Runner(agent=agent, environment=self)
         self.use_dataset(Mode.TEST_LIVE if test else Mode.LIVE, no_kill=True)

@@ -567,7 +567,7 @@ class HSearchEnv(object):
 
         step_acc, ep_acc = env.acc.step, env.acc.episode
         adv_avg = ep_acc.advantages[-1]
-        print(flat, f"\nAdvantage={adv_avg}\n\n")
+        print(flat, "\nAdvantage="+str(adv_avg)+"\n\n")
 
         sql = """
           insert into runs (hypers, advantage_avg, advantages, uniques, prices, actions, agent, flag) 
@@ -618,7 +618,7 @@ def print_feature_importances(X, Y, feat_names):
     feature_imp = sorted(zip(model.best_estimator_.feature_importances_, feat_names), key=lambda x: x[0],
                          reverse=True)
     print('\n\n--- Feature Importances ---\n')
-    print('\n'.join([f'{x[1]}: {round(x[0],4)}' for x in feature_imp]))
+    print('\n'.join([ str(str(x[1])+" : "+str(round(x[0],4)) ) for x in feature_imp]))
     return model
 
 

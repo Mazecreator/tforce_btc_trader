@@ -124,7 +124,7 @@ def _db_to_dataframe_ohlc(conn, limit='ALL', offset=0, just_count=False, arbitra
         select 
           g.open_price as g_open, g.high_price as g_high, g.low_price as g_low, g.close_price as g_close, g.volume as g_volume,
           o.open_price as o_open, o.high_price as o_high, o.low_price as o_low, o.close_price as o_close, o.volume as o_volume"""
-    query = f"""
+    query = """
     {select}
     from ohlc_gdax as g 
     inner join ohlc_okcoin as o on g.close_time=o.close_time
@@ -166,7 +166,7 @@ def _db_to_dataframe_main(conn, limit='ALL', offset=0, just_count=False, arbitra
         query = 'select count(*) over ()'
     else:
         query = 'select ' + ', '.join(
-            ', '.join(f"{t['name']}.{c} as {t['name']}_{c}" for c in t['cols'])
+            ', '.join(str(t['name']+"."+c+" as "+t['name']+"_"+c) for c in t['cols'])
             for t in tables_
         )
 
@@ -181,38 +181,46 @@ def _db_to_dataframe_main(conn, limit='ALL', offset=0, just_count=False, arbitra
     for i, table in enumerate(tables_):
         name, ts = table['name'], table['ts']
         if i == 0:
-            query += f" from {name}"
+            query += " from {name}"
+            query=query.replace('{name}',name)
             continue
         prior = tables_[i-1]
-        query += f"""
+        col_str = ', '.join(c for c in table['cols'])
+        query += """
             left join lateral (
-              select {', '.join(c for c in table['cols'])}
+              select {col_str}
               from {name}
               where {name}.{ts} <= {prior['name']}.{prior['ts']}
               order by {name}.{ts} desc
               limit 1 
             ) {name} on true
             """
+        query=query.replace('{name}',name)
+        query=query.replace('{ts}',ts)
+        query=query.replace('{col_str}',col_str)
+        query=query.replace("{prior['name']}",prior['name'])
+        query=query.replace("{prior['ts']}",prior['ts'])
+        #print("Query",query)
 
     if just_count:
         query += " limit 1"
         return conn.execute(query).fetchone()[0]
-
-    order_field = f"{first['name']}.{first['ts']}" if len(tables_) > 1 else first['ts']
-    query += f" order by {order_field} desc limit {limit} offset {offset}"
+    order_field = str(first['name']+"."+first['ts']) if len(tables_) > 1 else first['ts']
+    #order_field = first['name']+"."+first['ts']+" if "+str(len(tables_))+" > 1 else "+first['ts']
+    query += " order by "+order_field+" desc limit "+str(limit)+" offset "+str(offset)
 
     # order by date DESC (for limit to cut right), then reverse again (so old->new)
     df = pd.read_sql_query(query, conn).iloc[::-1]
     for t in tables_:
         for k, method in t['cols'].items():
             fill = {'value': 0} if method == Z else {'method': 'ffill' if method == F else 'bfill'}
-            col_name = f"{t['name']}_{k}"
+            col_name = t['name']+"_"+k
             df[col_name] = df[col_name].fillna(fill)
     df = df.astype('float64')
 
     if last_timestamp:
         # Save away last-timestamp (used in LIVE mode to inform how many new steps are added between polls
-        query = f"select {first['ts']} from {first['name']} order by {first['ts']} desc limit 1"
+        query = "select "+first['ts']+" from "+first['name']+" order by "+first['ts']+" desc limit 1"
         last_timestamp = conn.execute(query).fetchone()[first['ts']]
         return df, last_timestamp
     return df
@@ -227,7 +235,7 @@ def fetch_more(conn, last_timestamp, arbitrage):
     _db_to_dataframe_main()
     """
     t = tables[0]
-    query = f"select count(*) as ct from {t['name']} where {t['ts']} > :last_timestamp"
+    query = "select count(*) as ct from "+t['name']+" where "+t['ts']+" > :last_timestamp"
     n_new = conn.execute(text(query), last_timestamp=last_timestamp).fetchone()['ct']
     if n_new == 0:
         return None, 0, last_timestamp

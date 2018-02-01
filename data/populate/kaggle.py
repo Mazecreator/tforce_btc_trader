@@ -26,16 +26,19 @@ filenames = {
 }
 
 for k in ['coinbase', 'coincheck', 'bitstamp']:
-    filename = filenames[filename]
-    df = pd.read_csv(f'./bitcoin-historical-data/{filename}.csv')
+    filename = filenames[k]
+    df = pd.read_csv('data/populate/bitcoin-historical-data/'+filename)
     df = df.rename(columns=column_renames)
 
-    print(f'{filename}: saving to DB')
-    df.to_sql(filename, conn, if_exists='replace', chunksize=200)
+    print(filename+': saving to DB')
+    df.to_sql(k, conn, if_exists='replace', chunksize=200)
 
-    print(f'{filename}: modifying columns')
-    conn.execute(f"""
-    ALTER TABLE {filename} ALTER timestamp TYPE TIMESTAMP WITH TIME ZONE USING to_timestamp(timestamp) AT TIME ZONE 'UTC';
-    CREATE INDEX {filename}_timestamp ON {filename} (timestamp);
-    """)
-    print(f'{filename}: done')
+    print(filename+': modifying columns')
+    #conn.execute(f"""
+    #ALTER TABLE {filename} ALTER timestamp TYPE TIMESTAMP WITH TIME ZONE USING to_timestamp(timestamp) AT TIME ZONE 'UTC';
+    #CREATE INDEX {filename}_timestamp ON {filename} (timestamp);
+    #""")
+    conn.execute("ALTER TABLE "+k+" ALTER timestamp TYPE TIMESTAMP WITH TIME ZONE USING to_timestamp(timestamp) AT TIME ZONE 'UTC';")
+    conn.execute("CREATE INDEX "+k+"_timestamp ON "+k+" (timestamp);")
+
+    print(filename+': done')
